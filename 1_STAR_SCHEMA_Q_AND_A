@@ -1,0 +1,42 @@
+Explain the concept of a star schema.
+
+Answer: A star schema is a data warehouse design that consists of a central fact table linked to one or more dimension tables. The fact table contains quantitative data (facts), and dimension tables provide descriptive information about the data.
+What is the purpose of a fact table in a star schema?
+
+Answer: The fact table in a star schema stores quantitative measures (facts) related to a business process. It typically contains keys to dimension tables, allowing for analysis and reporting.
+What are dimension tables, and why are they important in a star schema?
+
+Answer: Dimension tables contain descriptive attributes that provide context to the quantitative data in the fact table. They are important for understanding, analyzing, and aggregating data in a meaningful way.
+Can you describe the difference between a dimension table and a fact table?
+
+Answer: Dimension tables contain descriptive attributes and are primarily used for providing context, while fact tables store quantitative measures (facts) and are the focus of analysis.
+Why is denormalization often used in star schema design?
+
+Answer: Denormalization is used to reduce the need for joining multiple tables during queries, improving query performance and simplifying analytical reporting tasks.
+How would you decide on the granularity of a fact table?
+
+Answer: Granularity is determined by the level of detail required for analysis. It should align with business requirements, ensuring that the fact table captures the necessary level of detail without being excessively fine-grained.
+What are the benefits of using a star schema in a data warehouse?
+
+Answer: Benefits include simplified query design, improved query performance, ease of understanding and maintenance, and support for analytical reporting.
+Explain the difference between a snowflake schema and a star schema.
+
+Answer: A star schema has dimension tables directly linked to a central fact table, while a snowflake schema allows for further normalization of dimension tables by breaking them into additional related tables.
+How do you handle slowly changing dimensions in a star schema?
+
+Answer: Slowly changing dimensions are handled by maintaining historical data in dimension tables. Techniques include Type 1 (overwrite), Type 2 (add a new row), and Type 3 (add separate columns for historical values).
+Can you provide an example of a business scenario that would benefit from a star schema?
+
+Answer: A retail scenario with sales data (fact) linked to product, store, and time dimensions. This would enable analysis of sales performance by product, store, and time period.
+What types of queries are star schemas optimized for?
+
+Answer: Star schemas are optimized for analytical queries, such as aggregations, filtering, and grouping, commonly used in business intelligence and reporting.
+Explain the importance of surrogate keys in star schema design.
+
+Answer: Surrogate keys are system-generated unique identifiers for dimension records, ensuring stability and facilitating data warehousing operations like updates and deletes.
+How does a star schema differ from an OLTP database schema?
+
+Answer: An OLTP schema is normalized and designed for transaction processing, while a star schema is denormalized and optimized for analytical processing and reporting.
+Can you design a simple star schema for a specific business scenario?
+
+Answer: Provide a hypothetical star schema design based on the given business scenario, ensuring that it includes a fact table and related dimension tables.
