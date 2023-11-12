@@ -1,3 +1,7 @@
+
+Dimensional modeling - In simple terms, it involves organizing and structuring 
+data in a way that makes it easy for business users to understand and retrieve information.
+
 Explain the concept of a star schema.
 
 Answer: A star schema is a data warehouse design that consists of a central fact table linked to one or more dimension tables. The fact table contains quantitative data (facts), and dimension tables provide descriptive information about the data.
