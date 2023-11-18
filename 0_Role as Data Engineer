@@ -4,8 +4,17 @@ I'm a data engineer and my core responsibilities include two main areas that are
 Collaborating with stakeholders.
 
     •	Understanding Requirements
+            Talk to people in the business to understand what they need from the data.
+            Figure out the specific details of what they want to achieve
     •	Defining Data Sources
+            Find out where the data is coming from. Identify and assess different data sources.
+            Work with others to decide which data is the most useful for what they want to do.
     •	Aligning with Business Goals
+            Make sure that what you're doing with the data helps the company reach its bigger goals.
+            Share ideas on how using data can help the business succeed.
+    •	Demonstrating Value
+
+/*
     •	Feedback Loop (Regular communication with stakeholders establishes a feedback loop. 
                       This allows for adjustments to be made based on their input, ensuring that the data 
                       engineering solutions effectively address their requirements.
@@ -17,7 +26,7 @@ Collaborating with stakeholders.
                           Through collaboration, Data Engineers can seek clarification and 
                           ensure that the end result aligns with the stakeholder's intended outcome)
 
-    •	Demonstrating Value
+*/
 
 
 
