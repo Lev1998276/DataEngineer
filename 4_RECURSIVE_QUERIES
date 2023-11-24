@@ -1,0 +1,12 @@
+WITH RECURSIVE NumberSequence AS (
+  SELECT 1 AS num
+
+  UNION ALL
+
+  SELECT num + 1
+  FROM NumberSequence
+  WHERE num < 5
+)
+
+SELECT num
+FROM NumberSequence;
