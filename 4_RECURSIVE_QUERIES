@@ -10,3 +10,40 @@ WITH RECURSIVE NumberSequence AS (
 
 SELECT num
 FROM NumberSequence;
+
+
+/*********************************************************************/
+ Create categories table
+CREATE TABLE categories (
+  category_id INT PRIMARY KEY,
+  category_name VARCHAR(255) NOT NULL,
+  parent_category_id INT,
+  FOREIGN KEY (parent_category_id) REFERENCES categories(category_id)
+);
+
+-- Insert category data
+INSERT INTO categories (category_id, category_name, parent_category_id) VALUES
+(1, 'Electronics', NULL),
+(2, 'Phones', 1),
+(3, 'Laptops', 1),
+(4, 'Smartphones', 2),
+(5, 'Apple', 4),
+(6, 'Samsung', 4);
+
+
+
+-- Example 1: Hierarchical Categories
+WITH RECURSIVE CategoryHierarchy AS (
+  SELECT category_id, category_name, parent_category_id, 1 AS level
+  FROM categories
+  WHERE parent_category_id IS NULL
+
+  UNION ALL
+
+  SELECT c.category_id, c.category_name, c.parent_category_id, ch.level + 1
+  FROM categories c
+  JOIN CategoryHierarchy ch ON c.parent_category_id = ch.category_id
+)
+SELECT category_id, category_name, parent_category_id, level
+FROM CategoryHierarchy
+ORDER BY level, category_id;
