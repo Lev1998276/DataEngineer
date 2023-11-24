@@ -1,0 +1,23 @@
+CREATE OR REPLACE TEMP.TABLE NEXUS.TEMP.employees (
+    employee_id INT PRIMARY KEY,
+    employee_name VARCHAR(255),
+    manager_id INT
+);
+
+INSERT INTO NEXUS.TEMP.employees VALUES
+(1, 'John Doe', NULL),
+(2, 'Jane Smith', 1),
+(3, 'Bob Johnson', 2),
+(4, 'Alice Williams', 1),
+(5, 'Charlie Brown', 2),
+(6, 'Eva Davis', 4),
+(7, 'Greg Miller', 4);
+
+
+SELECT
+    e.employee_name AS employee,
+    m.employee_name AS manager
+FROM
+    NEXUS.TEMP.employees e
+LEFT JOIN
+    NEXUS.TEMP.employees m ON e.manager_id = m.employee_id;
