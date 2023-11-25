@@ -1,0 +1,99 @@
+Write an SQL query to find the students who have the same grades
+ in both Math and English subjects.
+
+CREATE TEMP TABLE  NEXUS.TEMP.Students (
+    StudentID INT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Birthdate DATE
+);
+
+CREATE TEMP TABLE  NEXUS.TEMP.Grades (
+    StudentID INT,
+    Subject VARCHAR(50),
+    Grade CHAR(1)
+
+);
+
+
+-- Insert data into Students TEMP TABLE 
+INSERT INTO NEXUS.TEMP.Students (StudentID, FirstName, LastName, Birthdate)
+VALUES
+    (1, 'John', 'Doe', '1998-05-15'),
+    (2, 'Jane', 'Smith', '1999-02-28'),
+    (3, 'Bob', 'Johnson', '1998-11-10');
+
+-- Insert data into Grades TEMP TABLE 
+INSERT INTO NEXUS.TEMP.Grades (StudentID, Subject, Grade)
+VALUES
+    (1, 'Math', 'A'),
+    (1, 'English', 'B'),
+    (2, 'Math', 'A'),
+    (2, 'English', 'A'),
+    (3, 'Math', 'B'),
+    (3, 'English', 'C');
+
+
+/*******MY WAY ****************/
+
+
+WITH GRADE AS (
+  SELECT StudentID, COUNT(DISTINCT(Grade)) AS CNT FROM  NEXUS.TEMP.Grades
+  GROUP BY ALL
+  HAVING CNT = 1
+
+),
+STUDENT AS(
+SELECT
+  StudentID,
+  FirstName,
+  LastName
+FROM
+  NEXUS.TEMP.Students
+)
+
+SELECT * FROM STUDENT JOIN GRADE ON STUDENT.StudentID = GRADE.StudentID
+
+
+
+/**********GPT 1 *******************/
+
+
+WITH NEXUS.TEMP.SubjectGrades AS (
+  SELECT
+    StudentID,
+    Subject,
+    Grade
+  FROM Grades
+)
+
+SELECT
+  StudentID,
+  FirstName,
+  LastName
+FROM
+  NEXUS.TEMP.Students
+WHERE
+  (SELECT COUNT(DISTINCT Grade) FROM NEXUS.TEMP.SubjectGrades WHERE StudentID = Students.StudentID) = 1;
+  
+  
+/** ALTERNATIVE **/
+
+WITH GRADES AS (
+  SELECT StudentID, COUNT(DISTINCT(Grade)) AS CNT FROM Grades
+  GROUP BY ALL
+  HAVING CNT = 1
+
+)
+STUDENT AS(
+SELECT
+  StudentID,
+  FirstName,
+  LastName
+FROM
+  NEXUS.TEMP.Students
+)
+
+SELECT * FROM STUDENT JOIN GRADES ON STUDENT.STUDENT_ID = GRADES.STUDENT_ID
+
+
