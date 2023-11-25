@@ -76,24 +76,43 @@ FROM
 WHERE
   (SELECT COUNT(DISTINCT Grade) FROM NEXUS.TEMP.SubjectGrades WHERE StudentID = Students.StudentID) = 1;
   
-  
-/** ALTERNATIVE **/
+###########################################################################################################################3  
+Q2 ) Find Customers with the Same Total Amount in Two Different Orders
 
-WITH GRADES AS (
-  SELECT StudentID, COUNT(DISTINCT(Grade)) AS CNT FROM Grades
-  GROUP BY ALL
-  HAVING CNT = 1
+CREATE OR REPLACE TEMP TABLE NEXUS.TEMP.Orders (
+    OrderID INT PRIMARY KEY,
+    CustomerID INT,
+    TotalAmount INT
+);
 
+
+-- Insert data into Orders table
+INSERT INTO NEXUS.TEMP.Orders  (OrderID, CustomerID, TotalAmount)
+VALUES
+    (1, 101, 500),
+    (2, 102, 700),
+    (3, 101, 500),
+    (4, 103, 1000),
+    -- Add more orders as needed
+    (5, 104, 800),
+    (6, 102, 750);
+
+
+
+
+WITH OrderTotals AS (
+  SELECT
+    CustomerID,
+    TotalAmount,
+    COUNT(DISTINCT OrderID) AS OrderCount
+  FROM NEXUS.TEMP.Orders
+  GROUP BY CustomerID, TotalAmount
 )
-STUDENT AS(
+
 SELECT
-  StudentID,
-  FirstName,
-  LastName
-FROM
-  NEXUS.TEMP.Students
-)
-
-SELECT * FROM STUDENT JOIN GRADES ON STUDENT.STUDENT_ID = GRADES.STUDENT_ID
+  CustomerID,
+  TotalAmount
+FROM OrderTotals
+WHERE OrderCount > 1;
 
 
