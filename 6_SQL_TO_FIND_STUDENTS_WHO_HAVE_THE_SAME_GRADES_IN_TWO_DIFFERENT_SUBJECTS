@@ -1,0 +1,44 @@
+
+
+CREATE or replace TEMP TABLE  NEXUS.TEMP.StudentGrades (
+    StudentID INT,
+    Subject VARCHAR(50),
+    Grade CHAR(1)
+);
+
+
+-- Insert data into StudentGrades or replace TEMP TABLE 
+INSERT INTO NEXUS.TEMP.StudentGrades (StudentID, Subject, Grade)
+VALUES
+    (1, 'Math', 'A'),
+    (1, 'English', 'A'),
+    (2, 'Math', 'B'),
+    (2, 'English', 'B'),
+    (3, 'Math', 'A'),
+    (3, 'English', 'B'),
+    (4, 'Math', 'C'),
+    (4, 'English', 'C'),
+    -- Add more data as needed
+    (5, 'Math', 'A'),
+    (5, 'English', 'A');
+
+
+
+WITH SubjectGrades AS (
+  SELECT
+    StudentID,
+    Subject,
+    Grade
+  FROM NEXUS.TEMP.StudentGrades
+)
+
+SELECT
+  A.StudentID,
+  A.Subject AS Subject1,
+  A.Grade AS Grade1,
+  B.Subject AS Subject2,
+  B.Grade AS Grade2
+FROM SubjectGrades A
+JOIN SubjectGrades B ON A.StudentID = B.StudentID
+                  AND A.Subject <> B.Subject
+                  AND A.Grade = B.Grade;
