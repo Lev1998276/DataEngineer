@@ -1,0 +1,50 @@
+
+
+To find products with identical sales numbers in two different months, you can use the following SQL query:
+
+sql
+CREATE or replace TEMP TABLE  NEXUS.TEMP.SalesData (
+    ProductID INT,
+    Sales INT,
+    OrderDate DATE
+);
+
+
+-- Insert data into SalesData or replace TEMP TABLE 
+INSERT INTO NEXUS.TEMP.SalesData (ProductID, Sales, OrderDate)
+VALUES
+    (1, 200, '2023-01-15'),
+    (2, 300, '2023-01-20'),
+    (1, 500, '2023-02-10'),
+    (2, 700, '2023-02-15'),
+    (1, 400, '2023-03-05'),
+    (2, 600, '2023-03-10'),
+    (1, 200, '2023-04-01'),
+    -- Add more sales data as needed
+    (3, 500, '2023-01-25'),
+    (3, 700, '2023-02-05'),
+    (3, 800, '2023-03-20');
+
+
+
+
+WITH MonthlySales AS (
+  SELECT
+    ProductID,
+    Sales,
+    OrderDate,
+    MONTH(OrderDate) AS SalesMonth,
+    RANK() OVER (PARTITION BY ProductID ORDER BY MONTH(OrderDate)) AS SalesRank
+  FROM NEXUS.TEMP.SalesData
+)
+
+SELECT
+  A.ProductID,
+  A.Sales AS FirstMonthSales,
+  B.Sales AS SecondMonthSales,
+  A.SalesMonth AS FirstMonth,
+  MONTH(B.OrderDate) AS SecondMonth
+FROM MonthlySales A
+JOIN MonthlySales B ON A.ProductID = B.ProductID
+                  AND A.Sales = B.Sales
+WHERE A.SalesMonth < MONTH(B.OrderDate);
