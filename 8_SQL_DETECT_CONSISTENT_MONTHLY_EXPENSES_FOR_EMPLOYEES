@@ -1,0 +1,40 @@
+
+DETECT CONSISTENT MONTHLY EXPENSES FOR EMPLOYEES
+
+- EmployeeExpenses table for Example 26
+CREATE or replace TEMP TABLE  NEXUS.TEMP.EmployeeExpenses (
+    ExpenseID INT PRIMARY KEY,
+    EmployeeID INT,
+    ExpenseAmount DECIMAL(10, 2),
+    ExpenseDate DATE
+);
+
+
+-- Insert data into EmployeeExpenses or replace TEMP TABLE 
+INSERT INTO NEXUS.TEMP.EmployeeExpenses (ExpenseID, EmployeeID, ExpenseAmount, ExpenseDate)
+VALUES
+    (1, 201, 100.00, '2022-01-05'),
+    (2, 202, 200.00, '2022-01-10'),
+    (3, 201, 100.00, '2022-02-01'),
+    (4, 203, 300.25, '2022-02-05'),
+    (5, 202, 180.75, '2022-03-01'),
+    (6, 201, 220.50, '2022-03-10');
+
+
+WITH MonthlyExpenses AS (
+  SELECT
+    EmployeeID,
+    EXTRACT(MONTH FROM ExpenseDate) AS ExpenseMonth,
+    SUM(ExpenseAmount) AS TotalExpenses
+  FROM NEXUS.TEMP.EmployeeExpenses
+  GROUP BY EmployeeID, ExpenseMonth
+)
+
+SELECT
+  A.EmployeeID,
+  A.TotalExpenses,
+  A.ExpenseMonth
+FROM MonthlyExpenses A
+JOIN MonthlyExpenses B ON A.EmployeeID = B.EmployeeID
+                      AND A.TotalExpenses = B.TotalExpenses
+WHERE A.ExpenseMonth < B.ExpenseMonth;
