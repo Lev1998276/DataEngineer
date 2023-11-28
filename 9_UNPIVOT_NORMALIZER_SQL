@@ -1,0 +1,34 @@
+-- Create source table
+CREATE OR REPLACE TEMP TABLE  NEXUS.TEMP.source_table (
+    name STRING,
+    maths INT,
+    physics INT,
+    chemistry INT
+);
+
+-- Insert sample data into source table
+INSERT INTO  NEXUS.TEMP.source_table VALUES
+    ('ABC', 34, 45, 65);
+
+
+-- Create target table
+CREATE OR REPLACE TABLE NEXUS.TEMP.target_table (
+    name STRING,
+    subject STRING,
+    value INT
+);
+
+-- Transform and insert into the target table
+CREATE OR REPLACE TEMP TABLE NEXUS.TEMP.target_table AS
+SELECT
+    name,
+    subject,
+    value
+FROM
+    NEXUS.TEMP.source_table
+UNPIVOT (
+    value FOR subject IN (maths, physics, chemistry)
+);
+
+-- Show the result
+SELECT * FROM NEXUS.TEMP.target_table;
