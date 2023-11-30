@@ -1,0 +1,26 @@
+Challenges Faced when migrating Oracle To Snowflake.
+
+Enforcing primary key constraints
+
+Null behavior (Concatenation with nulls)
+
+Grants 
+
+Processing row to row Vs Batch (Parachute example) 
+
+
+Informatica VS Snowflake
+
+Challenges Faced when migrating Informatica To Snowflake.
+
+Lookup behavior ( 1 value as oppose to multiple values)
+
+Workflows to Procedures
+
+Generating script to execute the workflows as batch (need more info ??)
+
+Connecting to different database . Python script to convert data from SQL = > Snowflake via AWS.
+
+XML files split because of the restrictions on the size of variant column 
+
+
