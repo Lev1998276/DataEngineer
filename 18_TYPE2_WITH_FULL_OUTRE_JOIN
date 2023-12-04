@@ -1,0 +1,66 @@
+-- Current state of the dimension
+CREATE or replace TEMP TABLE  NEXUS.TEMP.dimension_current (
+    dimension_id INT PRIMARY KEY,
+    dimension_name VARCHAR(255),
+    effective_date DATE,
+    expiration_date DATE
+);
+
+-- Changes to the dimension over time
+CREATE or replace TEMP TABLE NEXUS.TEMP.imension_changes (
+    dimension_id INT,
+    dimension_name VARCHAR(255),
+    effective_date DATE,
+    expiration_date DATE,
+    change_type CHAR(1)  -- 'I' for Insert, 'U' for Update, 'D' for Delete
+);
+
+
+-- Inserting some initial data into the dimension_current table
+INSERT INTO NEXUS.TEMP.dimension_current (dimension_id, dimension_name, effective_date, expiration_date)
+VALUES
+    (1, 'Category A', '2022-01-01', '9999-12-31'),
+    (2, 'Category B', '2022-01-01', '9999-12-31'),
+    (3, 'Category C', '2022-01-01', '9999-12-31');
+
+-- Inserting changes into the dimension_changes table
+INSERT INTO NEXUS.TEMP.dimension_changes (dimension_id, dimension_name, effective_date, expiration_date, change_type)
+VALUES
+    (1, 'Category A - Updated', '2022-01-15', '9999-12-31', 'U'),  -- Update
+    (2, 'Category B', '2022-02-01', '2022-02-28', 'D'),            -- Delete
+    (4, 'Category D - New', '2022-03-01', '9999-12-31', 'I');      -- Insert
+
+
+WITH merged_data AS (
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY COALESCE(dc.dimension_id, dch.dimension_id)) AS surrogate_key,
+        COALESCE(dc.dimension_id, dch.dimension_id) AS merged_dimension_id,
+        COALESCE(dc.dimension_name, dch.dimension_name) AS merged_dimension_name,
+        COALESCE(dc.effective_date, dch.effective_date) AS merged_effective_date,
+        COALESCE(dc.expiration_date, dch.expiration_date) AS merged_expiration_date,
+        dch.change_type
+    FROM
+         NEXUS.TEMP.dimension_current dc
+    FULL OUTER JOIN
+         NEXUS.TEMP.dimension_changes dch
+    ON
+        dc.dimension_id = dch.dimension_id
+        AND dc.effective_date <= dch.expiration_date
+        AND dc.expiration_date >= dch.effective_date
+)
+SELECT
+    surrogate_key,
+    merged_dimension_id AS dimension_id,
+    merged_dimension_name AS dimension_name,
+    merged_effective_date AS effective_date,
+    merged_expiration_date AS expiration_date,
+    CASE
+        WHEN change_type = 'I' THEN 'Insert'
+        WHEN change_type = 'U' THEN 'Update'
+        WHEN change_type = 'D' THEN 'Delete'
+        ELSE 'Unchanged'
+    END AS change_type
+FROM
+    merged_data
+WHERE
+    merged_dimension_id IS NOT NULL; -- Exclude rows where dimension_id is NULL
