@@ -32,3 +32,36 @@ UNPIVOT (
 
 -- Show the result
 SELECT * FROM NEXUS.TEMP.target_table;
+
+
+
+
+
+
+/************************ 2ND EXAMPLE *********************************/
+CREATE or replace TEMP TABLE  NEXUS.TEMP.sales (
+  product_id INT,
+  quarter_1 DECIMAL(10, 2),
+  quarter_2 DECIMAL(10, 2),
+  quarter_3 DECIMAL(10, 2),
+  quarter_4 DECIMAL(10, 2)
+);
+
+INSERT INTO NEXUS.TEMP.sales  (product_id, quarter_1, quarter_2, quarter_3, quarter_4) VALUES
+(1, 100.00, 150.50, 200.75, 180.25),
+(2, 250.50, 300.75, 180.00, 220.50),
+(3, 80.00, 120.25, 150.00, 90.50);
+
+
+SELECT
+  product_id,
+  quarter,
+  sales
+FROM
+  NEXUS.TEMP.sales
+UNPIVOT
+  (
+    sales FOR quarter IN (quarter_1, quarter_2, quarter_3, quarter_4)
+  ) AS unpivoted_sales;
+
+
