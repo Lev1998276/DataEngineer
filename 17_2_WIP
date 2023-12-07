@@ -53,12 +53,18 @@ def create_snowflake_connection():
 def load_csv_into_table(connection, database, schema, table_name, s3_path):
     fully_qualified_table_name = f'{database}.{schema}.{table_name}'
     
+    print(fully_qualified_table_name)
     # Copy the data directly from the S3 path into the table
     sql = f"""
     COPY INTO {fully_qualified_table_name}
     FROM '{s3_path}'
     FILE_FORMAT = (TYPE = CSV FIELD_OPTIONALLY_ENCLOSED_BY='"' SKIP_HEADER=1)
     """
+    
+    print("SQL")
+    print("\n")
+    print(sql)
+    print("\n")
     connection.cursor().execute(sql)
 
 # Function to iterate over CSV files in S3 and load into Snowflake tables
@@ -67,7 +73,7 @@ def load_csv_files_into_snowflake(file_table_mapping, database, schema, s3_bucke
     
     for table_name, s3_file_path in file_table_mapping.items():
         # Load CSV into Snowflake table
-        load_csv_into_table(connection, database, schema, table_name, f's3://{s3_bucket}/{s3_file_path}')
+        load_csv_into_table(connection, database, schema, table_name, f'{s3_bucket}/{s3_file_path}')
         print(f"Data loaded into table {database}.{schema}.{table_name} from file {s3_file_path} in S3 bucket {s3_bucket}")
 
     connection.close()
@@ -87,6 +93,6 @@ if __name__ == "__main__":
     schema_name = 'TEMP'
     
     # Update the S3 bucket where CSV files are located
-    s3_bucket = 'vnsny-das-staging-test'
+    s3_bucket = '@NEXUS.JMAN.STAGE_HOME'
     
     load_csv_files_into_snowflake(file_table_mapping, database_name, schema_name, s3_bucket)
