@@ -1,0 +1,92 @@
+
+import os
+import snowflake.connector 
+import boto3
+import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
+
+s3_resource = boto3.resource('s3')
+s3_client = boto3.client('s3')
+
+CEDL_HOME = os.environ['CEDL_HOME']
+nexus_connectionProfile = CEDL_HOME + '/etc/.sf.nexus.profile'
+s3_connectionProfile = CEDL_HOME + '/etc/.s3_connection_profile'
+
+
+def create_snowflake_connection():
+    try:
+        pathExist = os.path.exists(nexus_connectionProfile)
+        if (not pathExist):
+            print('The profile {} doesn''t exist'.format(nexus_connectionProfile))
+            exit(1)
+        profileFile = open(nexus_connectionProfile)
+        for line in profileFile:
+            if (line.split('=')[0] == 'snowflakeAccount'):
+                snowflakeAccount = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeUsername'):
+                snowflakeUsername = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakePassword'):
+                snowflakePassword = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeRole'):
+                snowflakeRole = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeDBName'):
+                snowflakeDBName = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeWarehouse'):
+                snowflakeWarehouse = line.split('=')[1].replace('\n', '')
+            else:
+                pass
+        profileFile.close()
+        if (len(snowflakeAccount) == 0 or len(snowflakeUsername) == 0 or len(snowflakePassword) == 0 or len(
+                snowflakeRole) == 0 or len(snowflakeDBName) == 0 or len(snowflakeWarehouse) == 0):
+            print('some parameters are missing from {}'.format(nexus_connectionProfile))
+            exit(1)
+        conn = snowflake.connector.connect(user=snowflakeUsername, password=snowflakePassword, account=snowflakeAccount,
+                            warehouse=snowflakeWarehouse, database=snowflakeDBName)
+        print("connected to SNOWFLAKE Database.")
+    except snowflake.connector.Error as e:
+        print('Error connecting to SNOWFLAKE Database - {}'.format(e))
+        exit(1)
+    return conn
+
+
+# Function to load CSV data into Snowflake table from S3
+def load_csv_into_table(connection, database, schema, table_name, s3_path):
+    fully_qualified_table_name = f'{database}.{schema}.{table_name}'
+    
+    # Copy the data directly from the S3 path into the table
+    sql = f"""
+    COPY INTO {fully_qualified_table_name}
+    FROM '{s3_path}'
+    FILE_FORMAT = (TYPE = CSV FIELD_OPTIONALLY_ENCLOSED_BY='"' SKIP_HEADER=1)
+    """
+    connection.cursor().execute(sql)
+
+# Function to iterate over CSV files in S3 and load into Snowflake tables
+def load_csv_files_into_snowflake(file_table_mapping, database, schema, s3_bucket):
+    connection = create_snowflake_connection()
+    
+    for table_name, s3_file_path in file_table_mapping.items():
+        # Load CSV into Snowflake table
+        load_csv_into_table(connection, database, schema, table_name, f's3://{s3_bucket}/{s3_file_path}')
+        print(f"Data loaded into table {database}.{schema}.{table_name} from file {s3_file_path} in S3 bucket {s3_bucket}")
+
+    connection.close()
+
+
+
+if __name__ == "__main__":
+    # Dictionary to map table names to corresponding file paths in S3
+    file_table_mapping = {
+        'emp_tab': 'SRCFILES/TEST/emp.csv',
+        'prod_tab': 'SRCFILES/TEST/prod.csv'
+        # Add more mappings as needed
+    }
+    
+    # Update the database and schema names
+    database_name = 'NEXUS'
+    schema_name = 'TEMP'
+    
+    # Update the S3 bucket where CSV files are located
+    s3_bucket = 'vnsny-das-staging-test'
+    
+    load_csv_files_into_snowflake(file_table_mapping, database_name, schema_name, s3_bucket)
