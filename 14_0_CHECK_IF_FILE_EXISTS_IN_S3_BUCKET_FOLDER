@@ -1,0 +1,47 @@
+import boto3
+
+def list_objects_in_bucket(bucket_name, prefix=''):
+    s3 = boto3.client('s3')
+
+    # Use list_objects_v2 to get a list of objects in the bucket with the specified prefix
+    response = s3.list_objects_v2(Bucket=bucket_name, Prefix='SRCFILES/TEST')
+
+    # Extract and return the list of object keys
+    object_keys = [obj['Key'] for obj in response.get('Contents', [])]
+    return object_keys
+
+def check_files_in_folders(bucket_name):
+    # List all objects in the bucket
+    all_objects = list_objects_in_bucket(bucket_name)
+
+    # Extract folders and files
+    folders = set()
+    files = set()
+
+    for obj_key in all_objects:
+        # Split the object key into parts to identify folders and files
+        parts = obj_key.split('/')
+        if len(parts) > 1:
+            folders.add(parts[0])  # The first part before the first '/' is considered a folder
+        files.add(obj_key)
+
+    return folders, files
+
+if __name__ == "__main__":
+    # Replace 'your_bucket_name' with your actual S3 bucket name
+    bucket_name = 'vnsny-das-staging-test'
+
+    # Check files within folders in the S3 bucket
+    folders, files = check_files_in_folders(bucket_name)
+
+    if folders:
+        print("Folders:")
+        for folder in folders:
+            print(folder)
+
+    if files:
+        print("\nFiles:")
+        for file in files:
+            print(file)
+    else:
+        print("No files found in the S3 bucket.")
