@@ -1,17 +1,25 @@
 +---------------------------+
-|         Start             |
+|         Start Main        |
 +---------------------------+
             |
             v
 +---------------------------+
-| List Objects in S3 Bucket|
-|  - Function: list_objects_in_bucket() |
+|    Main Function          |
+|  - Function: main()       |
+|  - Calls:                 |
+|    - copy_csv_file_to_snowflake() |
+|    - perform_audit_checks() |
 +---------------------------+
             |
             v
 +---------------------------+
 | Copy CSV File to Snowflake|
 |  - Function: copy_csv_file_to_snowflake() |
+|  - Calls:                   |
+|    - get_snowflake_row_count() |
+|    - get_s3_row_count()       |
+|    - get_snowflake_columns()   |
+|    - get_s3_columns()          |
 +---------------------------+
             |
             v
