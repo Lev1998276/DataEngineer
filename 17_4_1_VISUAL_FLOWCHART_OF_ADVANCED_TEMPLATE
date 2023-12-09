@@ -1,0 +1,43 @@
++---------------------------+
+|         Start             |
++---------------------------+
+            |
+            v
++---------------------------+
+| List Objects in S3 Bucket|
+|  - Function: list_objects_in_bucket() |
++---------------------------+
+            |
+            v
++---------------------------+
+| Copy CSV File to Snowflake|
+|  - Function: copy_csv_file_to_snowflake() |
++---------------------------+
+            |
+            v
++---------------------------+
+|   Perform Audit Checks    |
+|  - Function: perform_audit_checks() |
++---------------------------+
+            |
+            v
++---------------------------+
+| Check 1: Row Counts Match |
+|  - Function: get_snowflake_row_count(), get_s3_row_count() |
++---------------------------+
+            |
+            v
++---------------------------+
+| Check 2: Column Names Match|
+|  - Function: get_snowflake_columns(), get_s3_columns() |
++---------------------------+
+            |
+            v
++---------------------------+
+|   Display Audit Results   |
++---------------------------+
+            |
+            v
++---------------------------+
+|           End             |
++---------------------------+
