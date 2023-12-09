@@ -1,28 +1,4 @@
-
-import os
-import snowflake.connector 
-import boto3
-import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
-
-s3_resource = boto3.resource('s3')
-s3_client = boto3.client('s3')
-
-CEDL_HOME = os.environ['CEDL_HOME']
-nexus_connectionProfile = CEDL_HOME + '/etc/.sf.nexus.profile'
-s3_connectionProfile = CEDL_HOME + '/etc/.s3_connection_profile'
-
-
-def create_snowflake_connection():
-    try:
-        pathExist = os.path.exists(nexus_connectionProfile)
-        if (not pathExist):
-            print('The profile {} doesn''t exist'.format(nexus_connectionProfile))
-            exit(1)
-        profileFile = open(nexus_connectionProfile)
-        for line in profileFile:
-            if (line.split('=')[0] == 'snowflakeAccount'):
-                snowflakeAccount = line.split('=')[1].replace('\n', '')
+\n', '')
             elif (line.split('=')[0] == 'snowflakeUsername'):
                 snowflakeUsername = line.split('=')[1].replace('\n', '')
             elif (line.split('=')[0] == 'snowflakePassword'):
