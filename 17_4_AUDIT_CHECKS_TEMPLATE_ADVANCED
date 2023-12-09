@@ -1,0 +1,101 @@
+import boto3
+import snowflake.connector
+
+def list_objects_in_bucket(bucket_name, prefix=''):
+    s3 = boto3.client('s3')
+    response = s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+    object_keys = [obj['Key'] for obj in response.get('Contents', [])]
+    return object_keys
+
+def copy_csv_file_to_snowflake(connection, database, schema, table_name, s3_bucket, s3_file_path):
+    fully_qualified_table_name = f'"{database}"."{schema}"."{table_name}"'
+    s3_full_path = f's3://{s3_bucket}/{s3_file_path}'
+
+    # Copy the data directly from the S3 path into the Snowflake table
+    copy_sql = f"""
+        COPY INTO {fully_qualified_table_name}
+        FROM '{s3_full_path}'
+        FILE_FORMAT = (TYPE = CSV FIELD_OPTIONALLY_ENCLOSED_BY='"' SKIP_HEADER=1)
+        ON_ERROR = 'CONTINUE';  -- Continue loading even if there are errors
+    """
+
+    print(f"Executing COPY command for file: {s3_full_path}")
+    connection.cursor().execute(copy_sql)
+
+    print(f"Data loaded into table {fully_qualified_table_name} from file {s3_full_path}")
+
+    # Perform audit checks
+    audit_check_results = perform_audit_checks(connection, database, schema, table_name, s3_bucket, s3_file_path)
+
+    for check, result in audit_check_results.items():
+        print(f"{check}: {'Passed' if result else 'Failed'}")
+
+def perform_audit_checks(connection, database, schema, table_name, s3_bucket, s3_file_path):
+    fully_qualified_table_name = f'"{database}"."{schema}"."{table_name}"'
+    
+    # Check 1: Compare row counts
+    snowflake_row_count = get_snowflake_row_count(connection, fully_qualified_table_name)
+    s3_row_count = get_s3_row_count(s3_bucket, s3_file_path)
+    check1 = snowflake_row_count == s3_row_count
+
+    # Check 2: Compare column names
+    snowflake_columns = get_snowflake_columns(connection, fully_qualified_table_name)
+    s3_columns = get_s3_columns(s3_bucket, s3_file_path)
+    check2 = snowflake_columns == s3_columns
+
+    # Check 3: Additional checks as needed
+
+    return {'Row Count Match': check1, 'Column Names Match': check2}
+
+def get_snowflake_row_count(connection, table_name):
+    query = f"SELECT COUNT(*) FROM {table_name}"
+    result = connection.cursor().execute(query).fetchone()
+    return result[0]
+
+def get_snowflake_columns(connection, table_name):
+    query = f"DESCRIBE TABLE {table_name}"
+    result = connection.cursor().execute(query).fetchall()
+    return [row[0] for row in result]
+
+def get_s3_row_count(s3_bucket, s3_file_path):
+    s3 = boto3.client('s3')
+    s3_object = s3.get_object(Bucket=s3_bucket, Key=s3_file_path)
+    csv_data = s3_object['Body'].read().decode('utf-8')
+    return len(csv_data.split('\n')) - 1  # Exclude header
+
+def get_s3_columns(s3_bucket, s3_file_path):
+    s3 = boto3.client('s3')
+    s3_object = s3.get_object(Bucket=s3_bucket, Key=s3_file_path)
+    csv_header = s3_object['Body'].read().decode('utf-8').split('\n')[0]
+    return csv_header.split(',')
+
+if __name__ == "__main__":
+    # Snowflake connection parameters
+    snowflake_config = {
+        'user': 'your_username',
+        'password': 'your_password',
+        'account': 'your_account_url',
+        'warehouse': 'your_default_warehouse',
+        'database': 'your_default_database',
+        'schema': 'your_default_schema',
+    }
+
+    # Replace these values with your actual S3 and Snowflake configurations
+    s3_bucket = 'your_s3_bucket'
+    s3_prefix = 'your/folder/path'
+
+    # Specify the Snowflake tables and their corresponding CSV files
+    table_mapping = {
+        'EMP_TAB': 'emp.csv',
+        'PROD_TAB': 'prod.csv',
+    }
+
+    # Create a Snowflake connection
+    snowflake_connection = snowflake.connector.connect(**snowflake_config)
+
+    # Copy CSV files from S3 into the corresponding Snowflake tables
+    for table_name, file_name in table_mapping.items():
+        copy_csv_file_to_snowflake(snowflake_connection, snowflake_config['database'], snowflake_config['schema'], table_name, s3_bucket, f'{s3_prefix}/{file_name}')
+
+    # Close the Snowflake connection
+    snowflake_connection.close()
