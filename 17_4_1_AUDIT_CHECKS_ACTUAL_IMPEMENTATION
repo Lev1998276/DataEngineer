@@ -113,8 +113,9 @@ def copy_csv_file_to_snowflake(connection, database, schema, table_name, s3_buck
     # Perform audit checks
     s3_bucket = 'vnsny-das-staging-test'
     path_part = os.path.relpath(s3_full_path, '@NEXUS.JMAN.STAGE_HOME')
-    path_part_with_slash = os.path.join('/', path_part)
-    s3_full_path = path_part_with_slash
+    #path_part_with_slash = os.path.join('/', path_part)
+    #s3_full_path = path_part_with_slash
+    s3_full_path = path_part
       
     audit_check_results = perform_audit_checks(connection, database, schema, table_name, s3_bucket, s3_full_path)
 
@@ -135,8 +136,13 @@ def perform_audit_checks(connection, database, schema, table_name, s3_bucket, s3
     # Check 2: Compare column names
     snowflake_columns = get_snowflake_columns(connection, fully_qualified_table_name)
     s3_columns = get_s3_columns(s3_bucket, s3_file_path)
+    print("\n")
+    print("check 2: Compare column names")
+    print(f'snowflake_columns - > {snowflake_columns}')
+    print(f's3_columns - > {s3_columns}')
     check2 = snowflake_columns == s3_columns
-    
+    print(f"Check 2 {check2}")
+     
     return {'Row Count Match': check1, 'Column Names Match': check2}
 
 def get_snowflake_row_count(connection, table_name):
@@ -147,20 +153,36 @@ def get_snowflake_row_count(connection, table_name):
 def get_snowflake_columns(connection, table_name):
     query = f"DESCRIBE TABLE {table_name}"
     result = connection.cursor().execute(query).fetchall()
-    return [row[0] for row in result]
+    print(f"{query}")
+    print(result)
+    print("Column headers from table \n")
+    xx_temp = [row[0].lower().strip() for row in result]
+    xx = ",".join(xx_temp)
+    print (xx)
+    print("\n")
+    return xx
+    
+    non_empty_lines = [line for line in csv_data.split('\n') if line.strip()]
 
 def get_s3_row_count(s3_bucket, s3_file_path):
     print(f"Inside get_s3_row_count {s3_bucket},{s3_file_path}")
     s3 = boto3.client('s3')
     s3_object = s3.get_object(Bucket=s3_bucket, Key=s3_file_path)
     csv_data = s3_object['Body'].read().decode('utf-8')
-    return len(csv_data.split('\n')) - 1  # Exclude header
+    non_empty_lines = [line for line in csv_data.split('\n') if line.strip()]
+    return len(non_empty_lines) - 1  # Exclude header
 
 def get_s3_columns(s3_bucket, s3_file_path):
     s3 = boto3.client('s3')
     s3_object = s3.get_object(Bucket=s3_bucket, Key=s3_file_path)
     csv_header = s3_object['Body'].read().decode('utf-8').split('\n')[0]
-    return csv_header.split(',')
+    print("\n")
+    print(f"Column headers from S3  {s3_bucket},{s3_file_path}\n")
+    print(csv_header)
+    print("\n")
+    csv_header_temp = [x.strip() for x in csv_header.split(',')]
+    csv_header = ",".join(csv_header_temp)
+    return csv_header
 
 if __name__ == "__main__":
 
