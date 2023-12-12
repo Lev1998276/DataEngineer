@@ -1,0 +1,246 @@
+import os
+import snowflake.connector
+import boto3
+from botocore.exceptions import ClientError
+import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+import pprint
+
+s3_resource = boto3.resource('s3')
+s3_client = boto3.client('s3')
+
+CEDL_HOME = os.environ['CEDL_HOME']
+nexus_connectionProfile = CEDL_HOME + '/etc/.sf.nexus.profile'
+s3_connectionProfile = CEDL_HOME + '/etc/.s3_connection_profile'
+
+
+def create_snowflake_connection():
+    try:
+        pathExist = os.path.exists(nexus_connectionProfile)
+        if (not pathExist):
+            print('The profile {} doesn''t exist'.format(nexus_connectionProfile))
+            exit(1)
+        profileFile = open(nexus_connectionProfile)
+        for line in profileFile:
+            if (line.split('=')[0] == 'snowflakeAccount'):
+                snowflakeAccount = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeUsername'):
+                snowflakeUsername = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakePassword'):
+                snowflakePassword = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeRole'):
+                snowflakeRole = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeDBName'):
+                snowflakeDBName = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeWarehouse'):
+                snowflakeWarehouse = line.split('=')[1].replace('\n', '')
+            else:
+                pass
+        profileFile.close()
+        if (len(snowflakeAccount) == 0 or len(snowflakeUsername) == 0 or len(snowflakePassword) == 0 or len(
+                snowflakeRole) == 0 or len(snowflakeDBName) == 0 or len(snowflakeWarehouse) == 0):
+            print('some parameters are missing from {}'.format(nexus_connectionProfile))
+            exit(1)
+        conn = snowflake.connector.connect(user=snowflakeUsername, password=snowflakePassword, account=snowflakeAccount,
+                            warehouse=snowflakeWarehouse, database=snowflakeDBName)
+        print("connected to SNOWFLAKE Database.")
+    except snowflake.connector.Error as e:
+        print('Error connecting to SNOWFLAKE Database - {}'.format(e))
+        exit(1)
+    return conn
+
+
+def create_audit_table(connection):
+    # Create an audit table if it doesn't exist
+    create_table_sql = """
+        CREATE TABLE IF NOT EXISTS NEXUS.TEMP.audit_log (
+            execution_time TIMESTAMP,
+            table_name VARCHAR,
+            s3_file_path VARCHAR,
+            check_name VARCHAR,
+            src_cnt integer,
+            tgt_cnt integer,
+            result BOOLEAN
+        )
+    """
+    connection.cursor().execute(create_table_sql)
+
+    # Log the creation of the audit table
+    #log_audit_result(connection, 'audit_log', 'N/A', 'Table Creation', True)
+
+def log_audit_result(connection, fully_qualified_table_name,s3_bucket, s3_full_path, check_name, result):
+
+    create_audit_table(connection)
+    # Log audit result into the audit table
+    insert_sql = """
+        INSERT INTO NEXUS.TEMP.audit_log (execution_time, table_name, s3_file_path, check_name, src_cnt, tgt_cnt, result)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """
+    execution_time = datetime.now()
+    
+    src_cnt = get_snowflake_row_count(connection, fully_qualified_table_name)
+    s3_bucket_1 = s3_bucket
+    tgt_cnt = get_s3_row_count(s3_bucket_1, s3_full_path)
+
+
+
+    # Prepare the parameter tuple
+    params = (execution_time, fully_qualified_table_name, s3_full_path, check_name, src_cnt,tgt_cnt, result)
+    
+    pprint.pprint(f'params - > {params}')
+
+    # Execute the query with positional parameters
+    connection.cursor().execute(insert_sql, params)
+
+
+
+def list_objects_in_bucket(bucket_name, prefix=''):
+    s3 = boto3.client('s3')
+    response = s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+    object_keys = [obj['Key'] for obj in response.get('Contents', [])]
+    return object_keys
+
+def copy_csv_file_to_snowflake(connection, database, schema, table_name, s3_bucket, s3_file_path):
+    fully_qualified_table_name = f'"{database}"."{schema}"."{table_name}"'
+    s3_full_path = f'{s3_bucket}/{s3_file_path}'
+
+    print(f's3_full_path {s3_full_path}')
+
+    # Copy the data directly from the S3 path into the Snowflake table
+    copy_sql = f"""
+        COPY INTO {fully_qualified_table_name}
+        FROM '{s3_full_path}'
+        FILE_FORMAT = (TYPE = CSV FIELD_OPTIONALLY_ENCLOSED_BY='"' SKIP_HEADER=1)
+        ON_ERROR = 'CONTINUE';  -- Continue loading even if there are errors
+    """
+
+    print(f"Executing COPY command for file: {s3_full_path}")
+    connection.cursor().execute(copy_sql)
+    connection.commit()
+
+    print(f"Data loaded into table {fully_qualified_table_name} from file {s3_full_path}")
+
+    # Perform audit checks
+    s3_bucket = 'vnsny-das-staging-test'
+    path_part = os.path.relpath(s3_full_path, '@NEXUS.JMAN.STAGE_HOME')
+    #path_part_with_slash = os.path.join('/', path_part)
+    #s3_full_path = path_part_with_slash
+    s3_full_path = path_part
+
+    audit_check_results = perform_audit_checks(connection, database, schema, table_name, s3_bucket, s3_full_path)
+    print(f"audit_check_results -> {audit_check_results}")
+
+    for check, result in audit_check_results.items():
+       print(f"{check}: {'Passed' if result else 'Failed'}")
+       # Log audit result
+       log_audit_result(connection, fully_qualified_table_name,s3_bucket, s3_full_path, check, result)
+
+def perform_audit_checks(connection, database, schema, table_name, s3_bucket, s3_file_path):
+    fully_qualified_table_name = f'"{database}"."{schema}"."{table_name}"'
+
+    # Check 1: Compare row counts
+    snowflake_row_count = get_snowflake_row_count(connection, fully_qualified_table_name)
+    print(f" snowflake_row_count = > {fully_qualified_table_name}, {snowflake_row_count}")
+    s3_row_count = get_s3_row_count(s3_bucket, s3_file_path)
+    print(f" s3_row_count = >  {s3_row_count}")
+    check1 = snowflake_row_count == s3_row_count
+
+
+    # Check 2: Compare column names
+    snowflake_columns = get_snowflake_columns(connection, fully_qualified_table_name)
+    s3_columns = get_s3_columns(s3_bucket, s3_file_path)
+    print("\n")
+    print("check 2: Compare column names")
+    print(f'snowflake_columns - > {snowflake_columns}')
+    print(f's3_columns - > {s3_columns}')
+    check2 = snowflake_columns == s3_columns
+    print(f"Check 2 {check2}")
+
+    #return {'Row Count Match': check1, 'Column Names Match': check2}
+    return {'Row Count Match': check1, 'Column Names Match': check2 , 'Source Rec Count' : s3_row_count ,'Target rec count': snowflake_row_count}
+
+def get_snowflake_row_count(connection, table_name):
+    query = f"SELECT COUNT(*) FROM {table_name}"
+    result = connection.cursor().execute(query).fetchone()
+    return result[0]
+
+def get_snowflake_columns(connection, table_name):
+    query = f"DESCRIBE TABLE {table_name}"
+    result = connection.cursor().execute(query).fetchall()
+    print(f"{query}")
+    print(result)
+    print("Column headers from table \n")
+    xx_temp = [row[0].lower().strip() for row in result]
+    xx = ",".join(xx_temp)
+    print (xx)
+    print("\n")
+    return xx
+
+    non_empty_lines = [line for line in csv_data.split('\n') if line.strip()]
+
+def get_s3_row_count(s3_bucket, s3_file_path):
+    print(f"Inside get_s3_row_count {s3_bucket},{s3_file_path}")
+    s3 = boto3.client('s3')
+    s3_object = s3.get_object(Bucket=s3_bucket, Key=s3_file_path)
+    csv_data = s3_object['Body'].read().decode('utf-8')
+    non_empty_lines = [line for line in csv_data.split('\n') if line.strip()]
+    return len(non_empty_lines) - 1  # Exclude header
+
+def get_s3_columns(s3_bucket, s3_file_path):
+    s3 = boto3.client('s3')
+    s3_object = s3.get_object(Bucket=s3_bucket, Key=s3_file_path)
+    csv_header = s3_object['Body'].read().decode('utf-8').split('\n')[0]
+    print("\n")
+    print(f"Column headers from S3  {s3_bucket},{s3_file_path}\n")
+    print(csv_header)
+    print("\n")
+    csv_header_temp = [x.strip() for x in csv_header.split(',')]
+    csv_header = ",".join(csv_header_temp)
+    return csv_header
+
+if __name__ == "__main__":
+
+
+
+    # Snowflake connection parameters
+    snowflake_config = {
+        'warehouse': 'DAS_BAT_WH_DEV',
+        'database': 'NEXUS',
+        'schema': 'TEMP',
+    }
+
+    # Replace these values with your actual S3 and Snowflake configurations
+    s3_bucket = '@NEXUS.JMAN.STAGE_HOME'
+    s3_prefix = 'SRCFILES/TEST'
+
+    print('Objects in the bucket are ......')
+    objects = list_objects_in_bucket('vnsny-das-staging-test', s3_prefix)
+
+    if objects:
+        print("Objects in the S3 bucket:")
+        for obj in objects:
+            print(obj)
+    else:
+        print("No objects found in the S3 bucket.")
+    print("\n")
+
+    # Specify the Snowflake tables and their corresponding CSV files
+    table_mapping = {
+        'EMP_TAB': 'emp.csv',
+        'PROD_TAB': 'prod.csv',
+    }
+
+    # Create a Snowflake connection
+    snowflake_connection = create_snowflake_connection()
+    
+    
+
+    # Copy CSV files from S3 into the corresponding Snowflake tables
+    for table_name, file_name in table_mapping.items():
+        copy_csv_file_to_snowflake(snowflake_connection, snowflake_config['database'], snowflake_config['schema'], table_name, s3_bucket, f'{s3_prefix}/{file_name}')
+
+    # Close the Snowflake connection
+    snowflake_connection.close()
+
+     
