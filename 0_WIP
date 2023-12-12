@@ -52,16 +52,13 @@ def create_snowflake_connection():
 
 
 def create_audit_table(connection):
-    # Create an audit table if it doesn't exist
     create_table_sql = """
-        CREATE TABLE IF NOT EXISTS NEXUS.TEMP.audit_log (
+        CREATE TABLE IF NOT EXISTS NEXUS.TEMP.audit_log1 (
             execution_time TIMESTAMP,
             table_name VARCHAR,
             s3_file_path VARCHAR,
             check_name VARCHAR,
-            src_cnt integer,
-            tgt_cnt integer,
-            result BOOLEAN
+            result VARCHAR
         )
     """
     connection.cursor().execute(create_table_sql)
@@ -74,19 +71,14 @@ def log_audit_result(connection, fully_qualified_table_name,s3_bucket, s3_full_p
     create_audit_table(connection)
     # Log audit result into the audit table
     insert_sql = """
-        INSERT INTO NEXUS.TEMP.audit_log (execution_time, table_name, s3_file_path, check_name, src_cnt, tgt_cnt, result)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO NEXUS.TEMP.audit_log1 (execution_time, table_name, s3_file_path, check_name, result)
+        VALUES (%s, %s, %s, %s, %s)
     """
     execution_time = datetime.now()
     
-    src_cnt = get_snowflake_row_count(connection, fully_qualified_table_name)
-    s3_bucket_1 = s3_bucket
-    tgt_cnt = get_s3_row_count(s3_bucket_1, s3_full_path)
-
-
 
     # Prepare the parameter tuple
-    params = (execution_time, fully_qualified_table_name, s3_full_path, check_name, src_cnt,tgt_cnt, result)
+    params = (execution_time, fully_qualified_table_name, s3_full_path, check_name, result)
     
     pprint.pprint(f'params - > {params}')
 
@@ -129,7 +121,15 @@ def copy_csv_file_to_snowflake(connection, database, schema, table_name, s3_buck
     s3_full_path = path_part
 
     audit_check_results = perform_audit_checks(connection, database, schema, table_name, s3_bucket, s3_full_path)
-    print(f"audit_check_results -> {audit_check_results}")
+    print("\n************* start DICTIONARY CONTENTS ******************\n")
+    print(f"Row Count Match = > {audit_check_results['Row Count Match']}")
+    print(f"Column Names Match = >{audit_check_results['Column Names Match']}")
+    print(f"Source Rec Count = > {audit_check_results['Source Rec Count']}")
+    print(f"Target rec count = >{audit_check_results['Target rec count']}")
+    print("\n************* end DICTIONARY CONTENTS ******************\n")
+    
+    
+    
 
     for check, result in audit_check_results.items():
        print(f"{check}: {'Passed' if result else 'Failed'}")
