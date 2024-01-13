@@ -1,0 +1,27 @@
+import requests
+
+def create_post(title, body):
+    url = "https://jsonplaceholder.typicode.com/posts"
+    data = {
+        "title": title,
+        "body": body,
+        "userId": 1
+    }
+
+    try:
+        response = requests.post(url, json=data)
+        
+        if response.status_code == 201:
+            new_post = response.json()
+            print(f"New Post Created:")
+            print(f"ID: {new_post['id']}")
+            print(f"Title: {new_post['title']}")
+            print(f"Body: {new_post['body']}")
+        else:
+            print(f"Error: {response.status_code}")
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Call the function to create a new post
+create_post("Sample Title", "This is the body of the post.")
