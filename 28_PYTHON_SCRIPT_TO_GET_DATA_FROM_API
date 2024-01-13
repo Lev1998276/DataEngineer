@@ -1,0 +1,25 @@
+import requests
+
+def get_posts():
+    url = "https://jsonplaceholder.typicode.com/posts"
+
+    try:
+        # Fetch posts
+        response = requests.get(url)
+        posts = response.json()
+
+        if response.status_code == 200:
+            print("List of Posts:")
+            for post in posts:
+                print(f"Post ID: {post['id']}")
+                print(f"Title: {post['title']}")
+                print(f"Body: {post['body']}")
+                print("------")
+        else:
+            print(f"Error fetching posts: {response.status_code}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Call the function to get posts
+get_posts()
