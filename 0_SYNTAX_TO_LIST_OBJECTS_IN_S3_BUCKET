@@ -1,0 +1,16 @@
+def list_csv_and_xml_objects_in_bucket(bucket_name, prefix=''):
+    s3 = boto3.client('s3')
+    response = s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+    allowed_extensions = ['.csv', '.xml']
+    object_keys = [obj['Key'] for obj in response.get('Contents', []) if any(obj['Key'].endswith(ext) for ext in allowed_extensions)]
+    return object_keys
+    
+    
+s3_bucket = 'vnsny-das-staging-test'
+s3_prefix = 'SRCFILES/TEST_LG'
+
+
+result = list_csv_and_xml_objects_in_bucket(s3_bucket, s3_prefix)
+
+for x in result:
+   print(x)
