@@ -1,3 +1,5 @@
+
+
 import os
 import snowflake.connector
 import boto3
@@ -52,16 +54,24 @@ def create_snowflake_connection():
 
 
 def create_audit_table(connection):
+    # Create an audit table if it doesn't exist
     create_table_sql = """
-        CREATE TABLE IF NOT EXISTS NEXUS.TEMP.audit_log1 (
+        CREATE TABLE IF NOT EXISTS NEXUS.TEMP.audit_log (
             execution_time TIMESTAMP,
             table_name VARCHAR,
             s3_file_path VARCHAR,
             check_name VARCHAR,
-            result VARCHAR
+            src_cnt integer,
+            tgt_cnt integer,
+            result BOOLEAN
         )
     """
+   
     connection.cursor().execute(create_table_sql)
+    
+        
+    #tr_table = "TRUNCATE TABLE NEXUS.TEMP.audit_log";
+    #connection.cursor().execute(tr_table)
 
     # Log the creation of the audit table
     #log_audit_result(connection, 'audit_log', 'N/A', 'Table Creation', True)
@@ -71,16 +81,21 @@ def log_audit_result(connection, fully_qualified_table_name,s3_bucket, s3_full_p
     create_audit_table(connection)
     # Log audit result into the audit table
     insert_sql = """
-        INSERT INTO NEXUS.TEMP.audit_log1 (execution_time, table_name, s3_file_path, check_name, result)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO NEXUS.TEMP.audit_log (execution_time, table_name, s3_file_path, check_name, src_cnt, tgt_cnt, result)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
     """
     execution_time = datetime.now()
+
+    src_cnt = get_snowflake_row_count(connection, fully_qualified_table_name)
+    print(f"inside log_audit_result src_cnt = {src_cnt}\n")
     
+    s3_bucket_1 = s3_bucket
+    tgt_cnt = get_s3_row_count(s3_bucket_1, s3_full_path)
+    
+    print(f"inside log_audit_result tgt_cnt = {tgt_cnt}\n")
 
     # Prepare the parameter tuple
-    params = (execution_time, fully_qualified_table_name, s3_full_path, check_name, result)
-    
-    pprint.pprint(f'params - > {params}')
+    params = (execution_time, fully_qualified_table_name, s3_full_path, check_name, src_cnt,tgt_cnt, result)
 
     # Execute the query with positional parameters
     connection.cursor().execute(insert_sql, params)
@@ -121,15 +136,8 @@ def copy_csv_file_to_snowflake(connection, database, schema, table_name, s3_buck
     s3_full_path = path_part
 
     audit_check_results = perform_audit_checks(connection, database, schema, table_name, s3_bucket, s3_full_path)
-    print("\n************* start DICTIONARY CONTENTS ******************\n")
-    print(f"Row Count Match = > {audit_check_results['Row Count Match']}")
-    print(f"Column Names Match = >{audit_check_results['Column Names Match']}")
-    print(f"Source Rec Count = > {audit_check_results['Source Rec Count']}")
-    print(f"Target rec count = >{audit_check_results['Target rec count']}")
-    print("\n************* end DICTIONARY CONTENTS ******************\n")
     
-    
-    
+
 
     for check, result in audit_check_results.items():
        print(f"{check}: {'Passed' if result else 'Failed'}")
@@ -157,8 +165,7 @@ def perform_audit_checks(connection, database, schema, table_name, s3_bucket, s3
     check2 = snowflake_columns == s3_columns
     print(f"Check 2 {check2}")
 
-    #return {'Row Count Match': check1, 'Column Names Match': check2}
-    return {'Row Count Match': check1, 'Column Names Match': check2 , 'Source Rec Count' : s3_row_count ,'Target rec count': snowflake_row_count}
+    return {'Row Count Match': check1, 'Column Names Match': check2}
 
 def get_snowflake_row_count(connection, table_name):
     query = f"SELECT COUNT(*) FROM {table_name}"
@@ -233,8 +240,8 @@ if __name__ == "__main__":
 
     # Create a Snowflake connection
     snowflake_connection = create_snowflake_connection()
-    
-    
+
+
 
     # Copy CSV files from S3 into the corresponding Snowflake tables
     for table_name, file_name in table_mapping.items():
@@ -242,5 +249,6 @@ if __name__ == "__main__":
 
     # Close the Snowflake connection
     snowflake_connection.close()
+
 
      
