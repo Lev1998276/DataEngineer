@@ -1,0 +1,32 @@
+https://www.datacamp.com/blog/top-python-interview-questions-and-answers
+
+Define a lambda function, an iterator, and a generator in Python.
+# Lambda function to calculate the square of a number
+square = lambda x: x**2
+
+result = square(5)
+print(result)  # Output: 25
+
+
+mytuple = ("apple", "banana", "cherry")
+myit = iter(mytuple)
+
+print(next(myit))
+print(next(myit))
+print(next(myit))
+
+
+
+def my_generator():
+    num = 1
+    while num <= 5:
+        yield num
+        num += 1
+
+# Using the generator
+gen = my_generator()
+for num in gen:
+    print(num)
+
+
+
