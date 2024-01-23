@@ -37,3 +37,10 @@ list2 = [1, 2, 3]
 result = lists_are_equal(list1, list2)
 print(result)
 
+def are_lists_palindromes(list1, list2):
+    return list1 == list1[::-1] and list2 == list2[::-1]
+
+list1 = [1, 2, 3, 2, 1]
+list2 = ['a', 'b', 'c', 'b', 'a']
+result = are_lists_palindromes(list1, list2)
+print(result)
