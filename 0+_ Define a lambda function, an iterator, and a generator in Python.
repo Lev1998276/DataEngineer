@@ -29,4 +29,11 @@ for num in gen:
     print(num)
 
 
+def lists_are_equal(list1, list2):
+    return list1 == list2
+
+list1 = [1, 2, 3]
+list2 = [1, 2, 3]
+result = lists_are_equal(list1, list2)
+print(result)
 
