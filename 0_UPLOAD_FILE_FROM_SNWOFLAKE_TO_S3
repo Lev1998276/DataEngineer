@@ -1,0 +1,119 @@
+import os
+import snowflake.connector
+import boto3
+from botocore.exceptions import ClientError
+import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
+import csv
+
+s3_resource = boto3.resource('s3')
+s3_client = boto3.client('s3')
+
+CEDL_HOME = os.environ['CEDL_HOME']
+nexus_connectionProfile = CEDL_HOME + '/etc/.sf.nexus.profile'
+s3_connectionProfile = CEDL_HOME + '/etc/.s3_connection_profile'
+
+
+def create_snowflake_connection():
+    try:
+        pathExist = os.path.exists(nexus_connectionProfile)
+        if (not pathExist):
+            print('The profile {} doesn''t exist'.format(nexus_connectionProfile))
+            exit(1)
+        profileFile = open(nexus_connectionProfile)
+        for line in profileFile:
+            if (line.split('=')[0] == 'snowflakeAccount'):
+                snowflakeAccount = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeUsername'):
+                snowflakeUsername = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakePassword'):
+                snowflakePassword = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeRole'):
+                snowflakeRole = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeDBName'):
+                snowflakeDBName = line.split('=')[1].replace('\n', '')
+            elif (line.split('=')[0] == 'snowflakeWarehouse'):
+                snowflakeWarehouse = line.split('=')[1].replace('\n', '')
+            else:
+                pass
+        profileFile.close()
+        if (len(snowflakeAccount) == 0 or len(snowflakeUsername) == 0 or len(snowflakePassword) == 0 or len(
+                snowflakeRole) == 0 or len(snowflakeDBName) == 0 or len(snowflakeWarehouse) == 0):
+            print('some parameters are missing from {}'.format(nexus_connectionProfile))
+            exit(1)
+        conn = snowflake.connector.connect(user=snowflakeUsername, password=snowflakePassword, account=snowflakeAccount,
+                            warehouse=snowflakeWarehouse, database=snowflakeDBName)
+        print("connected to SNOWFLAKE Database.")
+    except snowflake.connector.Error as e:
+        print('Error connecting to SNOWFLAKE Database - {}'.format(e))
+        exit(1)
+    return conn
+
+
+def testConnection(conn):
+    try:
+        sf_cur = conn.cursor()
+        query = """
+            SELECT  TARGET_TABLE_NAME FROM NEXUS.JMAN.TABLE_REFRESH_WHITE_LIST
+            WHERE JOB_ID = 'STG_CLAIMS_MI_NEXUS2_VNS01' LIMIT 10
+            """
+        sf_cur.execute(query,)
+        result = sf_cur.fetchall()
+
+        if sf_cur.rowcount == 0:
+            print('No Data available')
+            exit(1)
+        else:
+            result
+    except Exception as e:
+        print('Error getting data from the query: {}'.format(e))
+        exit(1)
+    return  result
+    
+
+# S3 Configuration
+s3_bucket = 'vnsny-das-staging-test'
+s3_key = '/SRCFILES/TEST/file.csv'
+
+
+# Snowflake Connection
+conn = create_snowflake_connection()
+
+# Snowflake Cursor
+cursor = conn.cursor()
+
+
+
+try:
+
+    result = testConnection(conn)
+    
+    print(f"Type of results is {type(result)}")
+    print(f"Results of query {result}")
+
+    # CSV File Path
+    csv_file_path = 'output.csv'
+
+    # Writing to CSV
+    with open(csv_file_path, 'w', newline='') as csv_file:
+        # Create a CSV writer
+        csv_writer = csv.writer(csv_file)
+
+        # Write the header if needed
+        # csv_writer.writerow(['ID', 'Name', 'Age'])
+
+        # Write data rows
+        csv_writer.writerows(result)
+
+    # Upload CSV File to S3
+    s3 = boto3.client('s3')
+    try:
+        s3.upload_file('output.csv', s3_bucket, s3_key)
+        print("File uploaded successfully to S3.")
+    except NoCredentialsError:
+        print("Credentials not available.")
+
+finally:
+    # Close Snowflake Connection
+    cursor.close()
+    conn.close()
