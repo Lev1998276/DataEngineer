@@ -155,8 +155,15 @@ def convert_to_json_structure(csv_data):
         "FormLines": [],
         "SubData": []
     }
+    
+    print("\n")
+    print("\n")
+    print(f"Headers = > {csv_data[0]}")
+    print("\n")
+    print("\n")
 
     for row in csv_data:
+        print(row)
         form_line = [
             {"Caption": header, "value": row.get(header, "")} for header in csv_data[0]
         ]
