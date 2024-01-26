@@ -55,37 +55,37 @@ def get_json_data(conn):
     try:
         sf_cur = sf_conn.cursor()
         query = '''
-                
-       SELECT 'tx_hx_hosp'     AS AutomationKey,
-               'ADD'            AS FormMode,
-               NULL             AS KeyValue,
-               D.sponsor_mrn    AS "Link to Person",
-               CASE
-                 WHEN Trim(Upper(D.facility_type)) = 'HHA' THEN 'Post Acute-Home Care'
-                 WHEN Trim(Upper(D.facility_type)) = 'HOSPICE' THEN 'Post Acute-Hospice'
-                 WHEN Trim(Upper(D.facility_type)) = 'IRF' THEN 'Post Acute-IRF'
-                 WHEN Trim(Upper(D.facility_type)) = 'LTACH' THEN
-                 'Post Acute-Long Term Care'
-                 WHEN Trim(Upper(D.facility_type)) = 'SNF' THEN 'Post Acute-SNF'
-                 WHEN Trim(Upper(D.facility_type)) = 'HOSPITAL'
-                      AND Trim(Upper(D.setting)) = 'OBSERVATION' THEN 'Observation'
-                 WHEN Trim(Upper(D.facility_type)) = 'HOSPITAL'
-                      AND Trim(Upper(D.setting)) = 'EMERGENCY' THEN 'ED/ER'
-                 WHEN Trim(Upper(D.facility_type)) = 'HOSPITAL'
-                      AND Trim(Upper(D.setting)) = 'INPATIENT' THEN 'Inpatient'
-               END              AS "Treatment History Type",
-               D.status_date
-               || ' '
-               || D.status_time AS "Admission Date",
-               NULL             AS "Discharge Date",
-               D.facility       AS "Facility Name",
-               'CAREPORT'       AS SOURCE,
-               NULL             AS Type,
-               NULL             AS Agency
-        FROM   nexus.dw_owner.careport_daily_event D
-        WHERE  D.sponsor_mrn = '10033814'
-               AND Trim(Upper(D.status)) NOT IN ('DISCHARGED - CANCELLED', 'ADMITTED - CANCELLED', 'SETTING CHANGED - CANCELLED' );
-                '''
+              
+           SELECT 'tx_hx_hosp'     AS AutomationKey,
+                   'ADD'            AS FormMode,
+                   NULL             AS KeyValue,
+                   D.sponsor_mrn    AS "Link to Person",
+                   CASE
+                     WHEN Trim(Upper(D.facility_type)) = 'HHA' THEN 'Post Acute-Home Care'
+                     WHEN Trim(Upper(D.facility_type)) = 'HOSPICE' THEN 'Post Acute-Hospice'
+                     WHEN Trim(Upper(D.facility_type)) = 'IRF' THEN 'Post Acute-IRF'
+                     WHEN Trim(Upper(D.facility_type)) = 'LTACH' THEN
+                     'Post Acute-Long Term Care'
+                     WHEN Trim(Upper(D.facility_type)) = 'SNF' THEN 'Post Acute-SNF'
+                     WHEN Trim(Upper(D.facility_type)) = 'HOSPITAL'
+                          AND Trim(Upper(D.setting)) = 'OBSERVATION' THEN 'Observation'
+                     WHEN Trim(Upper(D.facility_type)) = 'HOSPITAL'
+                          AND Trim(Upper(D.setting)) = 'EMERGENCY' THEN 'ED/ER'
+                     WHEN Trim(Upper(D.facility_type)) = 'HOSPITAL'
+                          AND Trim(Upper(D.setting)) = 'INPATIENT' THEN 'Inpatient'
+                   END              AS "Treatment History Type",
+                   D.status_date
+                   || ' '
+                   || D.status_time AS "Admission Date",
+                   NULL             AS "Discharge Date",
+                   D.facility       AS "Facility Name",
+                   'CAREPORT'       AS SOURCE,
+                   NULL             AS Type,
+                   NULL             AS Agency
+            FROM   nexus.dw_owner.careport_daily_event D
+            WHERE  D.sponsor_mrn = '10033814'
+                   AND Trim(Upper(D.status)) NOT IN ('DISCHARGED - CANCELLED', 'ADMITTED - CANCELLED', 'SETTING CHANGED - CANCELLED' );
+                    '''
         sf_cur.execute(query,)
         result = sf_cur.fetchall()
 
@@ -117,11 +117,13 @@ def write_tuples_to_csv(data, file_path, header=None):
         print(f'Error writing to CSV: {e}')
 
 
-def read_csv(file_path):
+def read_csv(csv_file_path):
     csv_data = []
     with open(csv_file_path, 'r') as csv_file:
         csv_reader = csv.reader(csv_file)
+        # Get the header from the first row
         header = next(csv_reader)
+        # Iterate through rows and create dictionaries
         for row in csv_reader:
             row_dict = {header[i]: value for i, value in enumerate(row)}
             csv_data.append(row_dict)
@@ -138,6 +140,8 @@ def convert_to_json_structure(csv_data):
     Returns:
     - json_data (dict): JSON structure.
     """
+    
+    #Defining the data structure
     json_data = {
         "AutomationKey": 'tx_hx_hosp',
         "FormMode": 'ADD',
@@ -160,6 +164,8 @@ def convert_to_json_structure(csv_data):
    
     json_data['FormLines'] = FormLines
     return json_data
+
+
 
 # Example usage
 csv_file_path = 'output.csv'
