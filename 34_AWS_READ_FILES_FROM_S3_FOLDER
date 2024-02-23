@@ -1,0 +1,43 @@
+import boto3
+from botocore.exceptions import NoCredentialsError
+from fnmatch import fnmatch
+
+def read_files_from_s3(bucket_name, folder_path, wildcard_pattern):
+    # Create an S3 client
+    s3 = boto3.client('s3')
+
+    file_contents = []
+
+    try:
+        # List objects in the specified bucket and folder
+        objects = s3.list_objects_v2(Bucket=bucket_name, Prefix=f"{folder_path}/")
+
+        # Read the content of each file matching the wildcard pattern
+        for obj in objects.get('Contents', []):
+            file_key = obj['Key']
+            if not obj['Key'].endswith('/'):  # Exclude folders
+                print(f'Checking file_key: {file_key} against wildcard_pattern: {wildcard_pattern}')
+                file_content = s3.get_object(Bucket=bucket_name, Key=file_key)['Body'].read().decode('utf-8')
+                print(f'File matched. Content of {file_key}:\n{file_content}')
+                file_contents.append({"file_key": file_key, "content": file_content})
+
+    except NoCredentialsError:
+        print("Credentials not available")
+
+    return file_contents
+
+# Replace these values with your own
+bucket_name = 'vnsny-das-staging-test'
+folder_path = 'CAREPORT_EVENTS'
+wildcard_pattern = 'vnsny_visit_events_*.csv*'
+
+files_and_contents = read_files_from_s3(bucket_name, folder_path, wildcard_pattern)
+
+# Now you can access the file contents
+for file_info in files_and_contents:
+    file_key = file_info["file_key"]
+    content = file_info["content"]
+    print(f"Content of {file_key}:\n{content}")
+
+# Add debugging print statements
+print("Number of files matched:", len(files_and_contents))
