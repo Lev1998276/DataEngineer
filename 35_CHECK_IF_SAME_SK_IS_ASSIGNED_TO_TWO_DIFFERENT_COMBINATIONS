@@ -1,0 +1,47 @@
+  SELECT DL_HE_COS_SK FROM 
+  DLAKESIT.CHOICE.FCT_CLAIM_LINE_UNIVERSE_CURR
+WHERE SRC_SYS IN ('TMG', 'FIDA')
+GROUP BY DL_HE_COS_SK
+HAVING COUNT(*) > 1
+AND COUNT(DISTINCT SERVICE_ID||POS_ID||FACILITY_TYPE||BILL_CLASS ) = COUNT(*)
+
+OR
+
+WITH RankedRows AS (
+  SELECT
+    sk,
+    col1,
+    col2,
+    ROW_NUMBER() OVER (PARTITION BY sk, col1 || col2 ORDER BY sk) AS row_num
+  FROM
+    your_table
+)
+
+SELECT DISTINCT sk
+FROM RankedRows
+WHERE row_num > 1;
+
+
+/*********************************************************************/
+SELECT sk
+FROM your_table
+GROUP BY sk
+HAVING COUNT(*) > 1
+   AND COUNT(DISTINCT col1 || col2) = COUNT(*);
+SELECT sk: This part of the query specifies the column(s) to be included in the result. In this case, we are selecting the sk column.
+
+FROM your_table: Specifies the table from which the data is retrieved. Replace your_table with the actual name of your table.
+
+GROUP BY sk: Groups the rows based on the values in the sk column. This is the first step in identifying duplicate sk values.
+
+HAVING COUNT(*) > 1: Filters the groups to only include those where the count of rows with the same sk is greater than 1. This ensures that there are at least two rows with the same sk.
+
+AND COUNT(DISTINCT col1 || col2) = COUNT(*): This condition ensures that the concatenation of col1 and col2 is unique for each row within the groups. If the count of distinct concatenated values is equal to the total count, it means that each row within the group has a unique combination of col1 and col2.
+
+So, the entire query is checking for sk values where there are at least two rows with the same sk, and the combination of col1 and col2 is unique for each row within the group. 
+If such conditions are met, it suggests that the same sk is assigned to two different rows with different values in col1 and col2.
+
+
+
+
+
