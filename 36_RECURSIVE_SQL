@@ -1,4 +1,4 @@
-/************* DATES ********************/
+/************* DATES ****************/
  WITH RECURSIVE DATE_TABLE AS (
   SELECT '2023-01-01'::DATE AS DA_DATE
   UNION ALL
