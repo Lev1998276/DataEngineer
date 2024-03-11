@@ -1,0 +1,61 @@
+
+
+create temp table nexus.temp.auto_repair
+(
+	client			varchar(20),
+	auto			varchar(20),
+	repair_date		int,
+	indicator		varchar(20),
+	value			varchar(20)
+);
+insert into auto_repair values('c1','a1',2022,'level','good');
+insert into auto_repair values('c1','a1',2022,'velocity','90');
+insert into auto_repair values('c1','a1',2023,'level','regular');
+insert into auto_repair values('c1','a1',2023,'velocity','80');
+insert into auto_repair values('c1','a1',2024,'level','wrong');
+insert into auto_repair values('c1','a1',2024,'velocity','70');
+insert into auto_repair values('c2','a1',2022,'level','good');
+insert into auto_repair values('c2','a1',2022,'velocity','90');
+insert into auto_repair values('c2','a1',2023,'level','wrong');
+insert into auto_repair values('c2','a1',2023,'velocity','50');
+insert into auto_repair values('c2','a2',2024,'level','good');
+insert into auto_repair values('c2','a2',2024,'velocity','80');
+
+select * from nexus.temp.auto_repair;
+
+with data as (
+SELECT indicator,value FROM nexus.temp.auto_repair
+WHERE INDICATOR = 'velocity'
+)
+data2 as (
+SELECT indicator, value  FROM nexus.temp.auto_repair
+)
+select 
+
+/****************************************/
+with data as (
+SELECT client,  indicator, value , LAG(VALUE ) OVER (PARTITION BY CLIENT order by CLIENT ) as lg FROM nexus.temp.auto_repair
+),
+data2 as (
+select client,  indicator, value , lg  from data
+order by client 
+),
+data3 as (
+select client, indicator, value, lg from data2
+where indicator = 'velocity'
+order by client
+),
+data4 as (
+select distinct  client,value,
+case when lg = 'good' then 1 else 0 end as good,
+case when lg = 'wrong' then 1 else 0 end as wrong,
+case when lg = 'regular' then 1 else 0 end as regular
+from data3
+)
+//select * from data4
+
+select distinct value,
+sum(good) over(partition by value order by value ) as sum_good,
+sum(wrong) over(partition by value order by value ) as sum_wrong,
+sum(regular) over(partition by value order by value ) as sum_regula
+from data4
