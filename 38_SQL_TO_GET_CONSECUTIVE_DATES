@@ -35,3 +35,32 @@ INSERT INTO orders (order_date) VALUES
 ('2024-03-08'),
 ('2024-03-10'),
 ('2024-03-11');
+
+
+
+
+
+WITH date_gaps AS (
+    SELECT 
+        order_date,
+        DATEADD(day, -1, order_date) AS prev_date,
+        DENSE_RANK() OVER(ORDER BY ORDER_DATE) AS RN,
+        DATEADD(day, -RN, order_date) AS TEMP_DATE
+    FROM NEXUS.TEMP.orders
+),
+consecutive_dates AS (
+    SELECT 
+        order_date,
+        prev_date,
+  day_diff,
+        SUM(CASE WHEN day_diff = 1 THEN 0 ELSE 1 END) OVER (ORDER BY order_date) AS grp
+    FROM date_gaps
+)
+SELECT * FROM consecutive_dates
+
+SELECT 
+    MIN(order_date) AS start_date,
+    MAX(order_date) AS end_date
+FROM consecutive_dates
+GROUP BY grp
+ORDER BY start_date;
