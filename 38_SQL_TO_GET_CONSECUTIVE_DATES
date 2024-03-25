@@ -1,0 +1,37 @@
+WITH date_gaps AS (
+    SELECT 
+        order_date,
+        DATE(order_date, '-1 day') AS prev_date,
+        strftime('%d', order_date) - strftime('%d', DATE(order_date, '-1 day')) AS day_diff
+    FROM orders
+),
+consecutive_dates AS (
+    SELECT 
+        order_date,
+        prev_date,
+        SUM(CASE WHEN day_diff = 1 THEN 0 ELSE 1 END) OVER (ORDER BY order_date) AS grp
+    FROM date_gaps
+)
+SELECT 
+    MIN(order_date) AS start_date,
+    MAX(order_date) AS end_date
+FROM consecutive_dates
+GROUP BY grp
+ORDER BY start_date;
+
+/******************************** DATA ************************/
+-- Create the orders table
+CREATE TABLE orders (
+    order_date DATE
+);
+
+-- Insert sample data into the orders table
+INSERT INTO orders (order_date) VALUES 
+('2024-03-01'),
+('2024-03-02'),
+('2024-03-03'),
+('2024-03-05'),
+('2024-03-07'),
+('2024-03-08'),
+('2024-03-10'),
+('2024-03-11');
