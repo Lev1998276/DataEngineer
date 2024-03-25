@@ -1,9 +1,9 @@
 WITH date_gaps AS (
     SELECT 
         order_date,
-        DATE(order_date, '-1 day') AS prev_date,
-        strftime('%d', order_date) - strftime('%d', DATE(order_date, '-1 day')) AS day_diff
-    FROM orders
+        DATEADD(day, -1, order_date) AS prev_date,
+        DATEDIFF(day, DATEADD(day, -1, order_date), order_date) AS day_diff
+    FROM NEXUS.TEMP.orders
 ),
 consecutive_dates AS (
     SELECT 
