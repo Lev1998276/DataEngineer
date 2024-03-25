@@ -1,22 +1,27 @@
+
 WITH date_gaps AS (
     SELECT 
         order_date,
         DATEADD(day, -1, order_date) AS prev_date,
-        DATEDIFF(day, DATEADD(day, -1, order_date), order_date) AS day_diff
+        DENSE_RANK() OVER(ORDER BY ORDER_DATE) AS RN,
+        DATEADD(day, -RN, order_date) AS TEMP_DATE,
+
     FROM NEXUS.TEMP.orders
 ),
 consecutive_dates AS (
     SELECT 
         order_date,
         prev_date,
-        SUM(CASE WHEN day_diff = 1 THEN 0 ELSE 1 END) OVER (ORDER BY order_date) AS grp
+        temp_date,
+        CONDITIONAL_CHANGE_EVENT(TEMP_DATE) OVER (ORDER BY TEMP_DATE) AS power_changes
     FROM date_gaps
 )
+
 SELECT 
     MIN(order_date) AS start_date,
     MAX(order_date) AS end_date
 FROM consecutive_dates
-GROUP BY grp
+GROUP BY power_changes
 ORDER BY start_date;
 
 /******************************** DATA ************************/
