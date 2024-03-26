@@ -1,71 +1,37 @@
 
-WITH date_gaps AS (
-    SELECT 
-        order_date,
-        DATEADD(day, -1, order_date) AS prev_date,
-        DENSE_RANK() OVER(ORDER BY ORDER_DATE) AS RN,
-        DATEADD(day, -RN, order_date) AS TEMP_DATE,
 
-    FROM NEXUS.TEMP.orders
-),
-consecutive_dates AS (
+
+WITH OrderedDates AS (
     SELECT 
         order_date,
-        prev_date,
-        temp_date,
-        CONDITIONAL_CHANGE_EVENT(TEMP_DATE) OVER (ORDER BY TEMP_DATE) AS power_changes
-    FROM date_gaps
+        LAG(order_date) OVER (ORDER BY order_date) AS prev_order_date
+    FROM 
+        NEXUS.TEMP.ORDERS
 )
 
-SELECT 
-    MIN(order_date) AS start_date,
-    MAX(order_date) AS end_date
-FROM consecutive_dates
-GROUP BY power_changes
-ORDER BY start_date;
+SELECT DISTINCT 
+    prev_order_date AS start_date,
+    order_date AS end_date
+FROM 
+    OrderedDates
+WHERE 
+    DATEDIFF(DAY, prev_order_date, order_date) = 1;
+
 
 /******************************** DATA ************************/
--- Create the orders table
-CREATE TABLE orders (
+CREATE OR REPLACE TABLE NEXUS.TEMP.orders (
+    order_id INT,
     order_date DATE
 );
 
--- Insert sample data into the orders table
-INSERT INTO orders (order_date) VALUES 
-('2024-03-01'),
-('2024-03-02'),
-('2024-03-03'),
-('2024-03-05'),
-('2024-03-07'),
-('2024-03-08'),
-('2024-03-10'),
-('2024-03-11');
-
-
-
-
-
-WITH date_gaps AS (
-    SELECT 
-        order_date,
-        DATEADD(day, -1, order_date) AS prev_date,
-        DENSE_RANK() OVER(ORDER BY ORDER_DATE) AS RN,
-        DATEADD(day, -RN, order_date) AS TEMP_DATE
-    FROM NEXUS.TEMP.orders
-),
-consecutive_dates AS (
-    SELECT 
-        order_date,
-        prev_date,
-  day_diff,
-        SUM(CASE WHEN day_diff = 1 THEN 0 ELSE 1 END) OVER (ORDER BY order_date) AS grp
-    FROM date_gaps
-)
-SELECT * FROM consecutive_dates
-
-SELECT 
-    MIN(order_date) AS start_date,
-    MAX(order_date) AS end_date
-FROM consecutive_dates
-GROUP BY grp
-ORDER BY start_date;
+INSERT INTO  NEXUS.TEMP.orders (order_id, order_date)
+VALUES
+    (1, '2024-03-01'),
+    (2, '2024-03-02'),
+    (3, '2024-03-04'),
+    (4, '2024-03-05'),
+    (5, '2024-03-08'),
+    (6, '2024-03-09'),
+    (7, '2024-03-12'),
+    (8, '2024-03-13'),
+    (9, '2024-03-15');
