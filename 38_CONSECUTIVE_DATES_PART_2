@@ -1,0 +1,43 @@
+CREATE OR REPLACE TABLE NEXUS.TEMP.orders (
+    order_id INT,
+    order_date DATE
+);
+
+INSERT INTO  NEXUS.TEMP.orders (order_id, order_date)
+VALUES
+    (1, '2024-03-01'),
+    (2, '2024-03-02'),
+    (3, '2024-03-04'),
+    (4, '2024-03-05'),
+    (5, '2024-03-08'),
+    (6, '2024-03-09'),
+    (7, '2024-03-12'),
+    (8, '2024-03-13'),
+    (9, '2024-03-15'),
+    (10, '2024-03-17'),
+    (11, '2024-03-18'),
+    (12, '2024-03-19'),
+    (13, '2024-03-20');
+
+
+
+
+WITH OrderedDates AS (
+    SELECT 
+        order_date,
+        dense_rank() over(ORDER BY order_date) as rn,
+        dateadd('day',-rn ,order_date ) as date_group
+    FROM 
+        NEXUS.TEMP.ORDERS
+)
+select 
+min(ORDER_DATE) as start_date,
+ max(ORDER_DATE) as end_date,
+DATEDIFF(day, start_date, end_date) as consecutive_days
+from OrderedDates
+group by
+date_group
+
+
+
+
